@@ -9,7 +9,7 @@ The diagrams folder contains a visual explanation of the service, and some slide
 
 ### The src folder
 This folder contains all of the code. Let's see what each component is, and how to use them. 
-You will find in the [postgres.sh](./postgres.sh) some of the commands described later to install and configure the postgres database. Some of the are executed automatically when you run the script, but some are commented and you have to type them manually.   
+You will find in the [postgres.sh](./src/postgres.sh) some of the commands described later to install and configure the postgres database. Some of the are executed automatically when you run the script, but some are commented and you have to type them manually.   
 
 The [main.go](./main.go) file starts the databases according to the config file (you can choose on the main.go file to use local of remote databases), it also starts a server and connect two users to it, compute some fibonacci and then wait until you end it manually (ctrl+C). While it runs, it will store inside influxdb database the energy consumption observed. 
 
