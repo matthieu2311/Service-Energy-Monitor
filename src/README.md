@@ -1,6 +1,6 @@
-# Stage-2A
+# Service Energy Monitor
 
-This project is the result of a 2 months internship during the second year of my engineering school. The goal is to build a way for users to monitor their energy consumption of multiple servers. 
+The goal of this project is to build a way for users to monitor their energy consumption of multiple servers. 
 In order to do that the server must provide an API to allow the user to access the energy consumption data of the underlying hardware, whereas the user have a python script allowing them to query said APIs and process the data into a static webpage. 
 
 
@@ -16,13 +16,13 @@ This folder contains all of the code. Let's see what each component is, and how 
 
 ['client.py'](./Go_code/client/client.py) : the python scrpit responsible for querying the APIs, processing data into (very) beautiful graphs and creating the webpage that is displayed in the end
 
-['fibonacci.go'](./Go_code/client/fibonacci.go) : this terrible implementation of fibonacci sequence is used to simulate activity inside the server and create some changes in energy consumption. It doesn't really belong in the client folder, but hey, it's my repository am i right ? 
+['fibonacci.go'](./Go_code/client/fibonacci.go) : this bad implementation of fibonacci sequence is used to simulate activity inside the server and create some changes in energy consumption.
 
-['websiteTemplate.htm'](./Go_code/client/websiteTemplate.htm) : is a ... template. Who would have guessed ? This is the base that client.py will use when creating the final html file. Are you wondering why the python script doesn't also create this part ? Well, it would take too long to explain and it is very complicated (it's laziness)
+['websiteTemplate.htm'](./Go_code/client/websiteTemplate.htm) : this is the base that client.py will use when creating the final html file. 
 
-['website.htm'](./Go_code/client/website.htm) : talking about the devil, this is the final file that will be displayed in the client's browser. It is rewritten each time client.py is run. 
+['website.htm'](./Go_code/client/website.htm) : this is the final file that will be displayed in the client's browser. It is rewritten each time client.py is run. 
 
-['images/'](./Go_code/client/images) : this is the folder where every image created by the python file will be stored, and it is also where the website.htm file will go looking when it needs to display an image. And just so you can troll your friends, I added a rick roll image just for you. 
+['images/'](./Go_code/client/images) : this is the folder where every image created by the python file will be stored, and it is also where the website.htm file will go looking when it needs to display an image. 
 
 </details>
 <details>
@@ -40,7 +40,7 @@ This folder contains all of the code. Let's see what each component is, and how 
 
 ['linuxConsumption.go'](./Go_code/controller/linuxConsumption.go) : this file is responsible for getting the energy consumption of the hardware when running on linux machines. It uses the data provided by intel-rapl, so the hardware needs to have this feature. Also because of this, it needs root privileges which means you have to compile the whole project and launch it with <em>sudo ./main</em>. More on this below on the how to use paragraph. 
 
-['readCSV.go'](./Go_code/controller/readCSV.go) : this file was originally thought in order to use this project with ['DEMETER'](https://github.com/Constellation-Group/Demeter) and to base the data consumption on DEMETER csv files. However, it can basically work with any csv given some conditions : it needs to be ";" separated values instead of "," (this is a single character to change in the code, so in reality it's not a big deal), the first column needs to be the UNIX time when the data was retrieved, the last column needs to be the total amount of energy consumed (in mWh) by the concerned process, and finally the last row of each batch of data must end with a row with the name 'CPU' on the second column. If it's not clear, go see the file I will add some more info if I'm not too lazy (spoiler I am).
+['readCSV.go'](./Go_code/controller/readCSV.go) : this file was originally thought in order to use this project with ['DEMETER'](https://github.com/Constellation-Group/Demeter) and to base the data consumption on DEMETER csv files. However, it can basically work with any csv given some conditions : it needs to be ";" separated values instead of "," (this is a single character to change in the code, so in reality it's not a big deal), the first column needs to be the UNIX time when the data was retrieved, the last column needs to be the total amount of energy consumed (in mWh) by the concerned process, and finally the last row of each batch of data must end with a row with the name 'CPU Energy' on the second column. 
 
 </details>
 <details>
@@ -49,21 +49,14 @@ This folder contains all of the code. Let's see what each component is, and how 
 #### Files:
 ['getPostgres.go'](./Go_code/model/getPostgres.go) : contains all the functions to retrieve data from the postgres database, for example functions to get users, time ranges, or links. 
 
-['updatePostgres.go'](./Go_code/model/updatePostgres.go) : this one also take care of the postgres database, but this time as you guessed with the name (you're good at that!) it contains functions to modify the database (reseting the db, creating the tables, deleting users, logging users connection...)
+['updatePostgres.go'](./Go_code/model/updatePostgres.go) : this one also take care of the postgres database, but this time it contains functions to modify the database (reseting the db, creating the tables, deleting users, logging users connection...)
 
-['modelInflux.go'](./Go_code/model/modelInflux.go) : without surprise, you will find in this file all that is needed to retrieve specific data from the Timeseries Influx database (used to store the energy values, if you needed a reminder).
-</details>
-<details>
-  <summary><strong> remoteClient folder</summary>
-
-Forget it, this was a mistake but I know i will be too lazy to delete it. 
+['modelInflux.go'](./Go_code/model/modelInflux.go) : you will find in this file all that is needed to retrieve specific data from the Timeseries Influx database (used to store the energy values, if you needed a reminder).
 </details>
 <details>
   <summary><strong> view folder</strong></summary>
 
-  #### Files: 
-  ['display.py'](./Go_code/view/display.py) : again, an error that i should delete. For some backstory, this was the first code i wrote to display the data gathered with client.py...
-  
+  #### Files:   
   ['routes.go'](./Go_code/view/routes.go) : its only role is to create the endpoints necessary when simulating a server, and to associate the right functions with the right endpoints.
 </details>
 
