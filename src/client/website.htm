@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Energy consumption</title>
+
+<script src="client.js"></script>
+<link rel="stylesheet" href="client.css">
+
+</head>
+
+<body>
+<h1 style="text-align:center;"> Energy Report</h1>
+<p>Your data consumption will show below.</p>
+
+
+<hr>
+<div>
+    <h3 style="text-align:center">Consumption on http://localhost:8080/</h3>
+    <p>Today the moment you have consumed the least was at 2025-02-24 09:30:54 with 8.63 mWh, 
+    whereas the moment you have consumed the most was at 2025-02-24 09:32:14 with 26.44 mWh.
+    Overall, your total consumption in these last 24h was of 216.5 mWh</p>
+
+    <p>This is the consumption of user 6 on http://localhost:8080/ :</p>
+    <div class="grid">
+        <div class="row">
+            <div class="plot-graph">
+                <img src="./images/u6Consumption.png" title="Energy consumption of user number 6. This guy really doesn't care about ecology IMHO...">
+            </div>
+            <div class="energy-equivalents">
+                <div class="energy-info">
+                    <p><strong class="energy-value">216.5 mWh</strong> is equivalent to </p>
+                        <div><ul>
+                            <li>0.0 phone charges</li>
+                            <li>0h of watching TV</li>
+                            <li>0km with an electric car</li>
+                            <li>and finally, 0.0�</li>
+                        </ul></div>
+                </div>
+                <div class="button-div">
+                    <button onclick="test()">Click to see the carbon emission of this website !</button>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div>
+                <img src="./images/u6BarChart.png">
+            </div>
+            <div> 
+                <img src="./images/u6WeeklyBarChart.png" title="Here is your weekly consumption since the start of the monitoring">
+            </div>
+        </div>
+
+        
+    </div>
+</div>
+    
+<hr>
+<h2 style="text-align:center">Servers comparison</h3>
+<p>With this pie chart you can see how the different servers that you consulted compare with one another.<br>
+<b>NB : </b><em>Note that this is based on the daily consumption, and not on the overall consumption.</em>
+</p>
+<img src="./images/u6PieChart.png" id="piechart">
+
+</body>
+</html>
+               

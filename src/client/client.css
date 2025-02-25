@@ -1,0 +1,51 @@
+body{
+    background-color: white;
+    font-size:larger;
+}
+
+.grid{
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    gap:20px;
+}
+
+.row{
+    display: flex;
+    align-items: center;
+    gap:20px;
+}
+
+.plot-graph{
+    flex-direction: row;
+    flex:2;
+}
+
+.energy-equivalents{
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+}
+
+.energy-info{
+    display: flex;
+    align-items: center;
+    gap:20px;
+    background-color: lightgray;
+    padding:20px;
+    border-radius:10px;
+    box-shadow: 4px 4px 10px rgba(0,0,0,0.2);
+}
+
+.energy-value{
+    font-size:24px;
+    font-weight: bold;
+}
+
+#piechart{
+    display:block;
+    margin-left: auto;
+    margin-right: auto;
+    width:max-content
+}
