@@ -43,6 +43,32 @@ body{
     font-weight: bold;
 }
 
+.rank{
+    display: flex;
+    align-items: center;
+    gap:20px;
+    background-color: #a19d94  ;
+    padding:20px;
+    border-radius: 5px;
+}
+
+.onepercent{
+    background-color: #50C878;
+}
+
+.fivepercent{
+    background-color: gold;
+}
+
+.tenpercent{
+    background-color: silver;
+}
+
+.twentypercent{
+    background-color: #cd7f32;
+}
+
+
 #piechart{
     display:block;
     margin-left: auto;

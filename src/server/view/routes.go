@@ -17,4 +17,5 @@ func CreateRoutes(router *gin.Engine, db *sql.DB, bucket, org, token, url string
 	router.GET("/users/:id/consumption", controller.GetAllDailyMean(db, bucket, org, token, url))
 	router.GET("/users/:id/today", controller.GetTodayHighlights(db, bucket, org, token, url))
 	router.GET("/users/:id/weeklyMean", controller.GetWeeklyMean(db, bucket, org, token, url))
+	router.GET("/users/:id/rank", controller.GetRank(db, bucket, org, token, url))
 }

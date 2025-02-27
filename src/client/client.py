@@ -3,6 +3,7 @@ import json
 import datetime as dt
 import requests
 import numpy as np
+import math
 
 
 
@@ -11,8 +12,12 @@ holes = {
         "~VALUE_MAX_CONS~":"error", "~SUM_CONS~":"error", "~GRAPH_IMAGE_SRC~":"error", "~SERVER_URL~":"error",
         "~BAR_IMAGE_SRC~":"error", "~USER_ID~":"error", "~PIE_CHART_IMG_SRC~":"error", "~PHONE_CHARGES_EQ~":"error",
         "~TV_HOURS_EQ~":"error","~KM_EQ~":"error","~PRICE_EQ~":"error",
+        "~DAY_RANK~":"error", "~WEEK_RANK~":"error", "~MONTH_RANK~":"error", "~YEAR_RANK~":"error", "~NBR_USERS~":"error", 
+        "~DAY_STRING~":"error", "~WEEK_STRING~":"error", "~MONTH_STRING~":"error", "~YEAR_STRING~":"error"
     }
 
+auth = ('','') # Put your username and password in the auth variable, that will then be passed for each of the get requests. 
+               # Useful for accessing grid5000 reverse proxy for example, but not necessary for a local server. 
 
 
 def convertJSONToDict(jsonFile):
@@ -25,8 +30,8 @@ def displayClassicGraph(url, id):
 
     imageURL = url + "users/"+str(id)+"/consumption"
 
-    response = requests.get(imageURL, auth=('', ''), verify=False) 
-    # Put your username and password int the auth parameter when requesting grid5000
+    response = requests.get(imageURL, auth=auth, verify=False) 
+
     if response.status_code == 200:
         print("GET request successful, now procceding to create the image")
     else:
@@ -63,7 +68,7 @@ def displayClassicGraph(url, id):
     #If using linux, the data is in J : plt.ylabel("J")
     plt.legend(["Mean consumption value per day"])
     plt.xticks(rotation=45)
-    plt.savefig("./client/images/u"+str(id)+"Consumption.png") 
+    plt.savefig(__file__.replace("client.py", "").replace("\\", "/")+"images/u"+str(id)+"Consumption.png") 
     # To make the title of the image unique and to store all images created,
     #  we can use the time of creation in the title : +str(dt.datetime.today())[12:].replace(":", "").replace(".", "")+".png")
     plt.show()
@@ -75,7 +80,7 @@ def displayClassicGraph(url, id):
 def displayTodayBarChart(url, id):
 
     todayURL = url + "users/"+str(id)+"/today"
-    response = requests.get(todayURL, auth=('', ''), verify=False)
+    response = requests.get(todayURL, auth=auth, verify=False)
 
     if response.status_code == 200:
         print("GET request successful")
@@ -117,7 +122,7 @@ def displayTodayBarChart(url, id):
     plt.ylabel("J")
     plt.legend(["Today's total consumption"])
     
-    plt.savefig("./client/images/u"+str(id)+"BarChart.png")
+    plt.savefig(__file__.replace("client.py", "").replace("\\", "/")+"images/u"+str(id)+"BarChart.png")
     plt.show()
     holes["~BAR_IMAGE_SRC~"] = "./images/u"+str(id)+"BarChart.png"
 
@@ -125,7 +130,7 @@ def displayTodayBarChart(url, id):
 def displayWeeklyBarChart(url, id):
 
     weeklyURL = url + "users/"+str(id)+"/weeklyMean"
-    response = requests.get(weeklyURL, auth=('', ''), verify=False)
+    response = requests.get(weeklyURL, auth=auth, verify=False)
 
     if response.status_code == 200:
         print("GET request successful")
@@ -140,7 +145,7 @@ def displayWeeklyBarChart(url, id):
     y_pos = np.arange(len(heights))
     plt.bar(y_pos, heights[::-1])
     plt.xticks(y_pos)
-    plt.savefig("./client/images/u"+str(id)+"WeeklyBarChart.png")
+    plt.savefig(__file__.replace("client.py", "").replace("\\", "/")+"images/u"+str(id)+"WeeklyBarChart.png")
     #In J for linux, in mWh for DEMETER/csv
     plt.ylabel("J")
     plt.legend(["Weekly mean consumption"])
@@ -148,6 +153,133 @@ def displayWeeklyBarChart(url, id):
     holes["~WEEKLY_BAR_IMAGE_SRC~"] = "./images/u"+str(id)+"WeeklyBarChart.png"
 
 
+def displayRankings(url, id):
+    ranksURL = url + "users/"+str(id)+"/rank"
+    response = requests.get(ranksURL, auth=auth, verify=False)
+
+    if response.status_code == 200:
+        print("GET request successful")
+    else:
+        print("Something went wrong")
+        response.raise_for_status()
+
+    dict = response.json()
+
+    #Categories : top 1%, top 5%, top 10%, top 20%, top 50%.
+    onePercent = math.ceil(0.01*dict[-1])
+    fivePercent = math.ceil(0.05*dict[-1])
+    tenPercent = math.ceil(0.1*dict[-1])
+    twentyPercent = math.ceil(0.2*dict[-1])
+    fiftyPercent = math.ceil(0.5*dict[-1])
+
+    holes["~NBR_USERS~"] = dict[-1]
+    holes["~YEAR_RANK~"] = dict[0]
+    holes["~MONTH_RANK~"] = dict[1]
+    holes["~WEEK_RANK~"] = dict[2]
+    holes["~DAY_RANK~"] = dict[3]
+
+    if dict[0]<= onePercent: 
+        holes["~YEAR_STRING~"] = """<div class="rank onepercent" id="yearRank">
+                                        You are in the top 1% this year ! Congratulations !
+                                    </div>"""
+    elif onePercent<dict[0]<=fivePercent:
+        holes["~YEAR_STRING~"] = """<div class="rank fivepercent" id="yearRank">
+                                        You are in the top 5% this year ! That's good !
+                                    </div>"""
+    elif fivePercent<dict[0]<=tenPercent:
+        holes["~YEAR_STRING~"] = """<div class="rank tenpercent" id="yearRank">
+                                        You are in the top 10% this year ! Keep going !
+                                    </div>"""
+    elif tenPercent<dict[0]<=twentyPercent:
+        holes["~YEAR_STRING~"] = """<div class="rank twentypercent" id="yearRank">
+                                        You are in the top 20% this year ! Keep going !
+                                    </div>"""
+    elif twentyPercent<dict[0]<=fiftyPercent:
+        holes["~YEAR_STRING~"] = """<div class="rank fiftypercent" id="yearRank">
+                                        You are in the top 50% this year ! That's not bad, but you can do better !
+                                    </div>"""
+    else:
+        holes["~YEAR_STRING~"] = """<div class="rank" id="yearRank">
+                                        You did not do very well this year compared to others... maybe try to limit your usage of the server to what's really needed ?
+                                    </div>"""
+
+    if dict[1]<= onePercent: 
+        holes["~MONTH_STRING~"] = """<div class="rank onepercent" id="monthRank">
+                                        You are in the top 1% this month ! Congratulations !
+                                    </div>"""
+    elif onePercent<dict[1]<=fivePercent:
+        holes["~MONTH_STRING~"] = """<div class="rank fivepercent" id="monthRank">
+                                        You are in the top 5% this month ! That's good !
+                                    </div>"""
+    elif fivePercent<dict[1]<=tenPercent:
+        holes["~MONTH_STRING~"] = """<div class="rank tenpercent" id="monthRank">
+                                        You are in the top 10% this month ! Keep going !
+                                    </div>"""
+    elif tenPercent<dict[1]<=twentyPercent:
+        holes["~MONTH_STRING~"] = """<div class="rank twentypercent" id="monthRank">
+                                        You are in the top 20% this month ! Keep going ! 
+                                     </div>"""
+    elif twentyPercent<dict[1]<=fiftyPercent:
+        holes["~MONTH_STRING~"] = """<div class="rank fiftypercent" id="monthRank">
+                                        You are in the top 50% this month ! That's not bad, but you can do better !
+                                    </div>"""
+    else:
+        holes["~MONTH_STRING~"] = """<div class="rank" id="monthRank">
+                                        You did not do very well this month compared to others... maybe try to limit your usage of the server to what's really needed ?
+                                    </div>"""
+
+
+    if dict[2]<= onePercent: 
+        holes["~WEEK_STRING~"] = """<div class="rank onepercent" id="weekRank">
+                                    You are in the top 1% this week ! Congratulations !
+                                </div>"""
+    elif onePercent<dict[2]<=fivePercent:
+        holes["~WEEK_STRING~"] = """<div class="rank fivepercent" id="weekRank">
+                                    You are in the top 5% this week ! That's good !
+                                </div>"""
+    elif fivePercent<dict[2]<=tenPercent:
+        holes["~WEEK_STRING~"] = """<div class="rank tenpercent" id="weekRank">
+                                        You are in the top 10% this week ! Keep going !
+                                    </div>"""
+    elif tenPercent<dict[2]<=twentyPercent:
+        holes["~WEEK_STRING~"] = """<div class="rank twentypercent" id="weekRank">
+                                        You are in the top 20% this week ! Keep going !
+                                    </div>"""
+    elif twentyPercent<dict[2]<=fiftyPercent:
+        holes["~WEEK_STRING~"] = """<div class="rank fiftypercent" id="weekRank">
+                                    You are in the top 50% this week ! That's not bad, but you can do better !
+                                    </div>"""
+    else:
+        holes["~WEEK_STRING~"] = """<div class="rank" id="weekRank">
+                                        You did not do very well this week compared to others... maybe try to limit your usage of the server to what's really needed ?
+                                    </div>"""
+    
+    
+    
+    if dict[3]<= onePercent: 
+        holes["~DAY_STRING~"] = """<div class="rank onepercent" id="dayRank">
+                                    You are in the top 1% today ! Congratulations !
+                                    </div>"""
+    elif onePercent<dict[3]<=fivePercent:
+        holes["~DAY_STRING~"] = """<div class="rank fivepercent" id="dayRank">
+                                        You are in the top 5% today ! That's good !
+                                    </div>"""
+    elif fivePercent<dict[3]<=tenPercent:
+        holes["~DAY_STRING~"] = """<div class="rank tenpercent" id="dayRank">
+                                        You are in the top 10% today ! Keep going !
+                                    </div>"""
+    elif tenPercent<dict[3]<=twentyPercent:
+        holes["~DAY_STRING~"] = """<div class="rank twentypercent" id="dayRank">
+                                        You are in the top 20% today ! Keep going !
+                                    </div>"""
+    elif twentyPercent<dict[3]<=fiftyPercent:
+        holes["~DAY_STRING~"] = """<div class="rank fiftypercent" id="dayRank">
+                                        You are in the top 50% today ! That's not bad, but you can do better !
+                                    </div>"""
+    else:
+        holes["~DAY_STRING~"] = """<div class="rank" id="dayRank">
+                                        You did not do very well today compared to others... maybe try to limit your usage of the server to what's really needed ?
+                                    </div>"""
 
 def displayPieChart(sumValues, id):
     values, labels = [],[]
@@ -157,7 +289,7 @@ def displayPieChart(sumValues, id):
             values.append(elt[1])
     
     plt.pie(values, labels=labels, labeldistance=1.15, wedgeprops={"linewidth":2, "edgecolor":"white"})
-    plt.savefig("./client/images/u"+str(id)+"PieChart.png")
+    plt.savefig(__file__.replace("client.py", "").replace("\\", "/")+"images/u"+str(id)+"PieChart.png")
 
     plt.show()
     holes["~PIE_CHART_IMG_SRC~"] = "./images/u"+str(id)+"PieChart.png"
@@ -216,6 +348,13 @@ def writeHTML(dict, file):
                 <img src="~WEEKLY_BAR_IMAGE_SRC~" title="Here is your weekly consumption since the start of the monitoring">
             </div>
         </div>
+        <p>Below is your ranking over the last day, week, month and year among all the other users of this server. The less energy you consume, the best you are ranked ! </p>
+        <div class="row">
+            ~DAY_STRING~
+            ~WEEK_STRING~
+            ~MONTH_STRING~
+            ~YEAR_STRING~
+        </div>
 
         
     </div>
@@ -268,16 +407,16 @@ if __name__ == "__main__":
         urls.append(url)
         urls.append(input("Enter your id for this site (integer) :"))
         url = input(inputMsg)
-
-    copyTemplate("./client/websiteTemplate.htm", "./client/website.htm")
+    copyTemplate(__file__.replace("client.py", "websiteTemplate.htm"), __file__.replace("client.py", "website.htm"))
     #copyTemplate("./websiteTemplate.htm", "./website.htm") #When executed from linux
     sumValues = []
-    file = open("./client/website.htm", "a")
+    file = open(__file__.replace("client.py", "website.htm"), "a")
 
     for i in range(0,len(urls),2):
         displayClassicGraph(urls[i], urls[i+1])
         displayTodayBarChart(urls[i], urls[i+1])
         displayWeeklyBarChart(urls[i], urls[i+1])
+        displayRankings(urls[i], urls[i+1])
         print(holes)
         sumValues.append((holes["~SERVER_URL~"], holes["~SUM_CONS~"]))
         writeHTML(holes, file)

@@ -157,7 +157,7 @@ func UserConnection(db *sql.DB, id int) {
 	if sessionOpen {
 		return
 	}
-	fmt.Printf("User %d connected at %s", id, time.Now().UTC().String())
+	//fmt.Printf("User %d connected at %s", id, time.Now().UTC().String())
 	if _, err := db.Exec(`insert into users (id, start_session, end_session) values ($1, $2, NULL) ON CONFLICT (id) DO NOTHING`,
 		id, time.Now().UTC()); err != nil {
 		log.Fatal(err)
@@ -211,7 +211,7 @@ func UserDeconnection(db *sql.DB, id int) {
 		//We start a new time range
 		var plageID int
 		var t time.Time
-		fmt.Printf("User %d disconnected at %s", id, time.Now().UTC().String())
+		//fmt.Printf("User %d disconnected at %s", id, time.Now().UTC().String())
 		if err = db.QueryRow("insert into plages (start, stop, nbr_users) values ($1, null, $2) returning id, start",
 			time.Now().UTC(), nbrUsers).Scan(&plageID, &t); err != nil {
 			log.Fatal(err)
@@ -236,7 +236,7 @@ func UserDeconnection(db *sql.DB, id int) {
 func PopulatePostgres(db *sql.DB) {
 	fmt.Println("------------------ Starting to populate the database... please wait (can be quite long) ------------- ")
 
-	r := 30000 - rand.Intn(15000)
+	r := 3000 - rand.Intn(1500)
 	//We connect successively r users
 	fmt.Printf("Connecting %d users to the server... ", r)
 
@@ -249,6 +249,7 @@ func PopulatePostgres(db *sql.DB) {
 	}
 
 	fmt.Printf("Successfully connected the users. Now proceeding to try to deconnect %d users...", 4*r/5)
+	time.Sleep(30 * time.Second)
 	//We disconnect some of them randomly (but not all)
 	for i := range 4 * r / 5 {
 		if i == 2*r/5 {
@@ -261,8 +262,9 @@ func PopulatePostgres(db *sql.DB) {
 	}
 
 	fmt.Printf("Successfully disconnected the users. Now proceeding to try to reconnect %d users...", 4*r/5)
-	//And then we reconnect some of them randomly
+	time.Sleep(30 * time.Second)
 
+	//And then we reconnect some of them randomly
 	for i := range 4 * r / 5 {
 		if i == 2*r/5 {
 			print("Almost finished !")

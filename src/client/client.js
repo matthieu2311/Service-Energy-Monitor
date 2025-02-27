@@ -4,7 +4,8 @@ async function fetchCarbonIntensity() {
             //Don't forget to change the zone in the url above if you do not want to monitor french electricity
             method: 'GET',
             headers: {
-                'auth-token': '' //Put your own token here (creating one on the website is free)
+                'auth-token': '' //Put your own token here (creating one on the website is free) 
+                // The api seems to work without a token, so it may not be mandatory... 
             }
         });
 

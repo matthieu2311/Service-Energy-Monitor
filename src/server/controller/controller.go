@@ -16,30 +16,39 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Connects to the postgres db, return a pointer to it
 func ConnectDB(username, password, host, port, dbname string) *sql.DB {
 	return model.ConnectDB(username, password, host, port, dbname)
 }
 
+// Delete all tables inside the postgres db, you should use StartServer after this one to create them again
 func Reset(db *sql.DB) {
 	model.Reset(db)
 }
 
+// Create all the tables if it is the first time the server is launched,
+// else end all the previous user sessions that did not end correctly and start a new time-range with 0 users connected.
 func StartServer(db *sql.DB) {
 	model.DemarrageServeur(db)
 }
 
+// Connect a new user to the server, and return the id that was attributed
 func NewUserConnection(db *sql.DB) int {
 	return model.NewUserConnection(db)
 }
 
+// Connect an already known user to the server. If a user with this id does not exists yet, behave like NewUserConnection
 func UserConnection(db *sql.DB, id int) {
 	model.UserConnection(db, id)
 }
 
+// Disconnect a user from the server. If the user wasn't connected, do nothing
 func UserDeconnection(db *sql.DB, id int) {
 	model.UserDeconnection(db, id)
 }
 
+// Gin handler function for the api endpoint. Show the list of all the users known by the server in a json.
+// Access it with .../users
 func GetUsers(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		users := model.GetUsers(db)
@@ -47,6 +56,8 @@ func GetUsers(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
+// Gin handler function for the api endpoint. Retrieve a specific user by the id specified in the url.
+// Access it with .../users/:id
 func GetUserById(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := strconv.Atoi(c.Param("id"))
@@ -55,6 +66,8 @@ func GetUserById(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
+// Gin handler function for the api endpoint. Retrieve all the links associated with the user specified by the id in the url.
+// Access it with .../users/:id/links
 func GetUserTimesById(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := strconv.Atoi(c.Param("id"))
@@ -63,6 +76,8 @@ func GetUserTimesById(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
+// Gin handler function for the api endpoint. Retrieve all the time-ranges since the start of the server.
+// Access it with .../plages
 func GetTimeRanges(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		timeRanges := model.GetTimeRanges(db)
@@ -70,6 +85,8 @@ func GetTimeRanges(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
+// Gin handler function for the api endpoint. Retrieve a specific time-range by the id specified in the url.
+// Access it with .../plages/:id
 func GetTimerangeById(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := strconv.Atoi(c.Param("id"))
@@ -78,6 +95,8 @@ func GetTimerangeById(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
+// Gin handler function for the api endpoint. Retrieve some key data about today's consumption.
+// Access it with .../users/:id/today
 func GetTodayHighlights(db *sql.DB, bucket, org, token, url string) gin.HandlerFunc {
 	year := time.Now().Year()
 	month := time.Now().Month()
@@ -89,6 +108,8 @@ func GetTodayHighlights(db *sql.DB, bucket, org, token, url string) gin.HandlerF
 	}
 }
 
+// Gin handler func : Return a list of all the daily average consumptions since the first connection of the user to the server.
+// Access it with .../users/:id/consumption
 func GetAllDailyMean(db *sql.DB, bucket, org, token, url string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := strconv.Atoi(c.Param("id"))
@@ -98,11 +119,24 @@ func GetAllDailyMean(db *sql.DB, bucket, org, token, url string) gin.HandlerFunc
 }
 
 // Return a gin function that gives the average consumption of each of the 52 last weeks
+// Access it with .../users/:id/weeklyMean
 func GetWeeklyMean(db *sql.DB, bucket, org, token, url string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := strconv.Atoi(c.Param("id"))
 		weeklyMean := getAllWeeklyMeans(id, db, bucket, org, token, url)
 		c.IndentedJSON(http.StatusOK, weeklyMean)
+	}
+}
+
+// Gin handler function for the api endpoint. Retrieve the rank of the user specified by the id in the url
+// among all the users of the server. There are four ranks, corresponding respectively to the :
+// rank over this year, this month, this week and today.
+// Access it with .../users/:id/rank
+func GetRank(db *sql.DB, bucket, org, token, url string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := strconv.Atoi(c.Param("id"))
+		ranks := RankUser(id, db, bucket, org, token, url)
+		c.IndentedJSON(http.StatusOK, ranks)
 	}
 }
 
@@ -129,11 +163,13 @@ func worker(tasks <-chan model.TimeRange, results chan<- []model.Point, wg *sync
 	}
 }
 
+// Get all the points stored in the influx db during the time when the user was connected.
+// It uses the subfunction worker to parallelize and accelerate the process.
 func getUserEnergyConsumption(id int, db *sql.DB, bucket, org, token, url string) []model.Point {
 	defer model.CloseClient()
 
 	var userEnergyC []model.Point
-	timeRanges := getUserTimes(id, db)
+	timeRanges := getUserTimes(id, db) //get all the time-ranges during which the user was connected
 
 	nbrWorkers := 5
 	tasks := make(chan model.TimeRange, len(timeRanges))
@@ -147,7 +183,7 @@ func getUserEnergyConsumption(id int, db *sql.DB, bucket, org, token, url string
 
 	go func() {
 		for _, t := range timeRanges {
-			tasks <- t
+			tasks <- t // Add these time-ranges to the tasks channel, letting workers treat them
 		}
 		close(tasks)
 	}()
@@ -169,6 +205,7 @@ func getUserEnergyConsumption(id int, db *sql.DB, bucket, org, token, url string
 	return userEnergyC
 }
 
+// Return a list of all the daily average consumptions since the first connection of the user to the server.
 func getAllDailyMean(id int, db *sql.DB, bucket, org, token, url string) []model.Point {
 	defer model.CloseClient()
 
@@ -192,6 +229,7 @@ func getAllDailyMean(id int, db *sql.DB, bucket, org, token, url string) []model
 	return result
 }
 
+// UNUSED Gin handler function for the api endpoint. Return a list of all the points corresponding to the energy consumption of the user.
 func GetUserEnergyConsumption(db *sql.DB, bucket, org, token, url string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Param("id"))
@@ -203,10 +241,12 @@ func GetUserEnergyConsumption(db *sql.DB, bucket, org, token, url string) gin.Ha
 	}
 }
 
+// Delete the user specified by id
 func DeleteUser(db *sql.DB, id int) {
 	model.DeleteUser(db, id)
 }
 
+// Allow to create a json file from a list of points. Can be useful for debugging but is unused otherwise.
 func createJSONFile(name string, data []model.Point) {
 	f, _ := os.Create(name)
 	defer f.Close()
@@ -218,6 +258,9 @@ func createJSONFile(name string, data []model.Point) {
 	f.Write(jsonData)
 }
 
+// Return an array of points (timestamp, value) corresponding to :
+//
+// today's maximum consumption, minimum consumption, total consumption, and average consumption.
 func getTodayHighlights(id, year, day int, month time.Month, db *sql.DB, bucket, org, token, url string) []model.Point {
 
 	defer model.CloseClient()
@@ -238,8 +281,8 @@ func getTodayHighlights(id, year, day int, month time.Month, db *sql.DB, bucket,
 		if t.Stop.Time.Before(today) || start.After(today.Add(24*time.Hour)) {
 			continue
 		}
-
 		influxData := model.GetData(bucket, org, token, url, start, stop)
+
 		for _, elt := range influxData {
 			if elt.Timestamp.Before(today.Add(24*time.Hour)) && elt.Timestamp.After(today) {
 
@@ -267,6 +310,8 @@ func getTodayHighlights(id, year, day int, month time.Month, db *sql.DB, bucket,
 	return maxMinSumMean
 }
 
+// Return an array with the average consumption (per 10s passed on the server) of each of the last 52 weeks.
+// The first element of the array is the mean consumption of the actual, ongoing week.
 func getAllWeeklyMeans(id int, db *sql.DB, bucket, org, token, url string) [52]float64 {
 
 	defer model.CloseClient()
@@ -318,6 +363,7 @@ func getAllWeeklyMeans(id int, db *sql.DB, bucket, org, token, url string) [52]f
 
 }
 
+// Return the average consumption (per 10s passed on the server) of this week (from Monday to today)
 func getWeeklyMean(id int, db *sql.DB, bucket, org, token, url string) float64 {
 
 	defer model.CloseClient()
@@ -331,6 +377,7 @@ func getWeeklyMean(id int, db *sql.DB, bucket, org, token, url string) float64 {
 	mondayTime := now.Add(-time.Duration(mondayGap*24) * time.Hour).Add(-time.Duration(now.Hour())*time.Hour - time.Duration(now.Minute())*time.Minute - time.Duration(now.Second())*time.Second)
 
 	timeRanges := getUserTimes(id, db)
+
 	for _, t := range timeRanges {
 
 		start := t.Start
@@ -342,7 +389,10 @@ func getWeeklyMean(id int, db *sql.DB, bucket, org, token, url string) float64 {
 		if t.Stop.Time.Before(mondayTime) || start.After(now) {
 			continue
 		}
-		allPoints = append(allPoints, model.GetData(bucket, org, token, url, start, stop)...)
+
+		for _, elt := range model.GetData(bucket, org, token, url, start, stop) {
+			allPoints = append(allPoints, model.Point{Timestamp: elt.Timestamp, Value: elt.Value / float64(t.NbrUsers)})
+		}
 	}
 	for _, elt := range allPoints {
 		result += elt.Value
@@ -354,6 +404,7 @@ func getWeeklyMean(id int, db *sql.DB, bucket, org, token, url string) float64 {
 	return result
 }
 
+// Return the average month consumption (per 10s passed on the server) for this month (from the 1st of the month to today)
 func getMonthlyMean(id int, db *sql.DB, bucket, org, token, url string) float64 {
 
 	defer model.CloseClient()
@@ -378,7 +429,10 @@ func getMonthlyMean(id int, db *sql.DB, bucket, org, token, url string) float64 
 		if t.Stop.Time.Before(monthTime) || start.After(now) {
 			continue
 		}
-		allPoints = append(allPoints, model.GetData(bucket, org, token, url, start, stop)...)
+
+		for _, elt := range model.GetData(bucket, org, token, url, start, stop) {
+			allPoints = append(allPoints, model.Point{Timestamp: elt.Timestamp, Value: elt.Value / float64(t.NbrUsers)})
+		}
 	}
 	for _, elt := range allPoints {
 		result += elt.Value
@@ -390,6 +444,7 @@ func getMonthlyMean(id int, db *sql.DB, bucket, org, token, url string) float64 
 	return result
 }
 
+// Return the average consumption (per 10s passed on the server) during this civil year (from January, 1st to today)
 func getYearlyMean(id int, db *sql.DB, bucket, org, token, url string) float64 {
 
 	defer model.CloseClient()
@@ -402,6 +457,7 @@ func getYearlyMean(id int, db *sql.DB, bucket, org, token, url string) float64 {
 	yearTime := time.Date(time.Now().Year(), time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	timeRanges := getUserTimes(id, db)
+
 	for _, t := range timeRanges {
 
 		start := t.Start
@@ -413,7 +469,10 @@ func getYearlyMean(id int, db *sql.DB, bucket, org, token, url string) float64 {
 		if t.Stop.Time.Before(yearTime) || start.After(now) {
 			continue
 		}
-		allPoints = append(allPoints, model.GetData(bucket, org, token, url, start, stop)...)
+
+		for _, elt := range model.GetData(bucket, org, token, url, start, stop) {
+			allPoints = append(allPoints, model.Point{Timestamp: elt.Timestamp, Value: elt.Value / float64(t.NbrUsers)})
+		}
 	}
 	for _, elt := range allPoints {
 		result += elt.Value
@@ -428,7 +487,7 @@ func getYearlyMean(id int, db *sql.DB, bucket, org, token, url string) float64 {
 // Return means in the following order : mean over the year, mean over the last month, over the last
 // week and over the last day (!not the last 24h!).
 // All means are expressed in mWh/10s or J/10s depending of the version (so the average consumption for 10s passed on the server).
-func GetAllMeans(id int, db *sql.DB, bucket, org, token, url string) []float64 {
+func getAllMeans(id int, db *sql.DB, bucket, org, token, url string) []float64 {
 
 	yMWDMeans := []float64{}
 
@@ -443,7 +502,12 @@ func GetAllMeans(id int, db *sql.DB, bucket, org, token, url string) []float64 {
 	return yMWDMeans
 }
 
-// Not functional yet
+// Return an array with the different rankings of the user with id "id".
+// For example, if a user is the least consumer of energy (on average) on the server, his rank will be 1.
+// Since the consumption can vary depending of the time of the year, this program computes the rank for different periods of time.
+// It also add the total number of users, to allow comparisons and percentages.
+// The elements of the array corresponds respectively to : the year rank, the month rank, the week rank,
+// the daily rank and the total number of users in the database.
 func RankUser(id int, db *sql.DB, bucket, org, token, url string) []int {
 
 	type Mean struct {
@@ -456,17 +520,19 @@ func RankUser(id int, db *sql.DB, bucket, org, token, url string) []int {
 	monthMeans := []Mean{}
 	weekMeans := []Mean{}
 	dayMeans := []Mean{}
-
-	for _, id := range model.GetUsersIDs(db) {
-		temp := GetAllMeans(id, db, bucket, org, token, url)
-		yearMeans = append(yearMeans, Mean{value: temp[0], id: id})
-		monthMeans = append(yearMeans, Mean{value: temp[1], id: id})
-		weekMeans = append(yearMeans, Mean{value: temp[2], id: id})
-		dayMeans = append(yearMeans, Mean{value: temp[3], id: id})
+	ids := model.GetUsersIDs(db)
+	if !slices.Contains(ids, id) {
+		fmt.Println("This user is not registered in the database ! ")
+		log.Fatal()
 	}
-	//fmt.Println(dayMeans)
-	//fmt.Println(weekMeans)
-	//fmt.Println(monthMeans)
+
+	for _, id := range ids {
+		temp := getAllMeans(id, db, bucket, org, token, url)
+		yearMeans = append(yearMeans, Mean{value: temp[0], id: id})
+		monthMeans = append(monthMeans, Mean{value: temp[1], id: id})
+		weekMeans = append(weekMeans, Mean{value: temp[2], id: id})
+		dayMeans = append(dayMeans, Mean{value: temp[3], id: id})
+	}
 
 	cmp := func(i, j Mean) int {
 		if i.value == j.value {

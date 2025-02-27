@@ -14,6 +14,7 @@ import (
 	"time"
 )
 
+// Not verified so may not work, you should use ReadCsvWhileRunning which does the same thing but better.
 func ReadCsv(fileName string) []model.Point {
 
 	file, err := os.Open(fileName)
@@ -50,6 +51,10 @@ func ReadCsv(fileName string) []model.Point {
 	return points
 }
 
+// Reads the CSV produced by DEMETER and inserts them into the given channel. It will wait if the line isn't complete
+// (because DEMETER is still writing it) or if there isn't any new point written yet.
+// After 40s without new data added to the csv, it ends without error.
+//
 // This function is made specially to work with DEMETER, and will probably need some changes in order to work
 // with all .csv files.
 // Here is the expected format of csv with and example :
@@ -65,11 +70,12 @@ func ReadCsv(fileName string) []model.Point {
 //
 // The last row of each batch of processes monitored needs to be called CPU Energy before going to the next batch.
 // It is designed to ignore the RESTART LINE of DEMETER csv files.
-func ReadCsvWhileRunning(csvFileName, exportFileName string, pointsChan chan model.Point, wg *sync.WaitGroup) {
+func ReadCsvWhileRunning(csvFileName string, pointsChan chan model.Point, wg *sync.WaitGroup, debug bool) {
 
 	defer wg.Done()
 	var running bool = true
 	var counter int = 0
+	var exportFile *os.File
 
 	csvFile, err := os.Open(csvFileName)
 	if err != nil {
@@ -79,11 +85,13 @@ func ReadCsvWhileRunning(csvFileName, exportFileName string, pointsChan chan mod
 	reader := csv.NewReader(csvFile)
 	reader.Comma = ';'
 
-	exportFile, err := os.OpenFile(exportFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatal(err)
+	if debug {
+		exportFile, err := os.OpenFile("debug.json", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer exportFile.Close()
 	}
-	defer exportFile.Close()
 
 	var sum float64
 
@@ -123,9 +131,10 @@ func ReadCsvWhileRunning(csvFileName, exportFileName string, pointsChan chan mod
 				if err != nil {
 					log.Fatal(err)
 				}
-
-				exportFile.Write(p)
-				exportFile.Write([]byte{',', '\n'})
+				if debug {
+					exportFile.Write(p)
+					exportFile.Write([]byte{',', '\n'})
+				}
 				pointsChan <- model.Point{Timestamp: t, Value: sum}
 				sum = 0
 			}
